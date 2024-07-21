@@ -5,6 +5,8 @@ provider "aws" {
 # VPC 설정
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
+  enable_dns_support = true
+  enable_dns_hostnames = true
 
   tags = {
     Name = "main-vpc"
@@ -12,12 +14,24 @@ resource "aws_vpc" "main" {
 }
 
 # 서브넷 설정
-resource "aws_subnet" "main" {
-  vpc_id     = aws_vpc.main.id
-  cidr_block = "10.0.1.0/24"
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "ap-northeast-1a"
+  map_public_ip_on_launch = true
 
   tags = {
-    Name = "main-subnet"
+    Name = "public-subnet"
+  }
+}
+
+resource "aws_subnet" "private" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "ap-northeast-1c"  # 다른 가용 영역으로 변경
+
+  tags = {
+    Name = "private-subnet"
   }
 }
 
@@ -31,7 +45,7 @@ resource "aws_internet_gateway" "main" {
 }
 
 # 라우트 테이블 설정
-resource "aws_route_table" "main" {
+resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   route {
@@ -40,23 +54,45 @@ resource "aws_route_table" "main" {
   }
 
   tags = {
-    Name = "main-route-table"
+    Name = "public-route-table"
   }
 }
 
-# 라우트 테이블과 서브넷 연관
-resource "aws_route_table_association" "main" {
-  subnet_id      = aws_subnet.main.id
-  route_table_id = aws_route_table.main.id
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
 }
 
-# EC2 인스턴스 설정
-resource "aws_instance" "example" {
-  ami           = "ami-02d103d746c04361a"  # Amazon Linux 2 ARM64 AMI
-  instance_type = "t4g.micro"              # ARM64 아키텍처 지원 인스턴스 타입
-  subnet_id     = aws_subnet.main.id
+# EKS 클러스터 생성
+resource "aws_eks_cluster" "example" {
+  name     = "example-cluster"
+  role_arn  = aws_iam_role.eks_cluster.arn
+
+  vpc_config {
+    subnet_ids = [aws_subnet.public.id, aws_subnet.private.id]
+  }
 
   tags = {
-    Name = "example-instance"
+    Name = "example-cluster"
+  }
+}
+
+# EKS 노드 그룹 생성
+resource "aws_eks_node_group" "taewoo_group" {
+  cluster_name    = aws_eks_cluster.example.name
+  node_group_name = "TaewooGroup"
+  node_role_arn   = aws_iam_role.eks_node.arn
+  subnet_ids       = [aws_subnet.public.id, aws_subnet.private.id]
+
+  scaling_config {
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
+  }
+
+  instance_types = ["t4g.medium"]
+
+  tags = {
+    Name = "TaewooGroup"
   }
 }
