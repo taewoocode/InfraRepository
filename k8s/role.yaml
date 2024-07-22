@@ -1,0 +1,8 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backend-config-role
+rules:
+- apiGroups: [""]
+  resources: ["sevices", "configmaps"]
+  verbs: ["get", "create", "upadate"]
