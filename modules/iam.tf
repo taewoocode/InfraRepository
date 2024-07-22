@@ -1,7 +1,7 @@
 # EKS 클러스터 IAM 역할 설정
 resource "aws_iam_role" "eks_cluster" {
   name = "eks-cluster-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -26,7 +26,6 @@ resource "aws_iam_role_policy_attachment" "eks_vpc_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
 }
 
-# EKS 노드 IAM 역할 설정
 resource "aws_iam_role" "eks_node" {
   name = "eks-node-role"
 
@@ -52,4 +51,15 @@ resource "aws_iam_role_policy_attachment" "eks_node_policy" {
 resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
   role      = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+# IAM 역할에 정책 추가
+resource "aws_iam_role_policy_attachment" "s3_access_policy" {
+  role      = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_logs_policy" {
+  role      = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 }
