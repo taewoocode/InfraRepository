@@ -108,7 +108,8 @@
 
 AWS EKS 클러스터의 모니터링을 위해 CloudWatch 에이전트를 DaemonSet으로 설정합니다. 이를 통해 모든 노드에서 로그 및 메트릭을 수집할 수 있습니다.
 
-
+## 도커허브 주소 추가
+https://hub.docker.com/repository/docker/taewoocode/apiserver/general
 
 
 
