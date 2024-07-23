@@ -1,5 +1,5 @@
 # 인프라 아키텍처
-![alt text](image.png)
+![alt text](Image/image.png)
 
 ## 설계 목표
 
@@ -100,6 +100,15 @@
     - **포트**: 80
   - **프라이빗 인스턴스**: `aws_lb_target_group_attachment.example_private`
     - **포트**: 80
+## 모니터링 설정
+
+### CloudWatch 에이전트 DaemonSet 구성
+![alt text](Image/ImageMonitoring.png)
+AWS EKS 클러스터의 모니터링을 위해 CloudWatch 에이전트를 DaemonSet으로 설정합니다. 이를 통해 모든 노드에서 로그 및 메트릭을 수집할 수 있습니다.
+
+
+
+
 
 ## 설계 이유
 
