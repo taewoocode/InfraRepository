@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "ap-northeast-1" # 지역을 실제 사용하고자 하는 지역으로 설정해주세요.
+  region = "ap-northeast-1"
 }
 
 provider "kubernetes" {
@@ -66,7 +66,7 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
-  availability_zone       = "ap-northeast-1c"
+  availability_zone       = "ap-northeast-1a"
 
   tags = {
     Name = "private-subnet"
@@ -259,7 +259,7 @@ resource "aws_eks_node_group" "private_nodes" {
 }
 
 resource "aws_instance" "public_instance" {
-  ami           = "ami-0b44ce1dad7c202b7" # 업데이트된 AMI ID
+  ami           = "ami-0b44ce1dad7c202b7" 
   instance_type = "t4g.nano"
   subnet_id     = aws_subnet.public.id
   associate_public_ip_address = true
@@ -270,11 +270,68 @@ resource "aws_instance" "public_instance" {
 }
 
 resource "aws_instance" "private_instance" {
-  ami           = "ami-0b44ce1dad7c202b7" # 업데이트된 AMI ID
+  ami           = "ami-0b44ce1dad7c202b7" 
   instance_type = "t4g.nano"
   subnet_id     = aws_subnet.private.id
 
   tags = {
     Name = "PrivateInstance"
   }
+}
+
+resource "aws_lb" "nlb" {
+  name               = "example-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnet_mapping {
+    subnet_id = aws_subnet.public.id
+  }
+  enable_deletion_protection = false
+
+  tags = {
+    Name = "example-nlb"
+  }
+}
+
+resource "aws_lb_target_group" "example" {
+  name     = "example-target-group"
+  port     = 80
+  protocol = "TCP"
+  vpc_id   = aws_vpc.main.id
+
+  health_check {
+    enabled             = true
+    interval            = 30
+    protocol            = "TCP"
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+    timeout             = 10
+  }
+
+  tags = {
+    Name = "example-target-group"
+  }
+}
+
+resource "aws_lb_listener" "nlb_listener" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = 80
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.example.arn
+  }
+}
+
+resource "aws_lb_target_group_attachment" "example" {
+  target_group_arn = aws_lb_target_group.example.arn
+  target_id        = aws_instance.public_instance.id
+  port             = 80
+}
+
+resource "aws_lb_target_group_attachment" "example_private" {
+  target_group_arn = aws_lb_target_group.example.arn
+  target_id        = aws_instance.private_instance.id
+  port             = 80
 }
