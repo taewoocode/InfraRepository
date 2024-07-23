@@ -12,36 +12,6 @@ data "aws_eks_cluster_auth" "example" {
   name = aws_eks_cluster.example.name
 }
 
-resource "kubernetes_cluster_role" "example" {
-  metadata {
-    name = "example-role"
-  }
-
-  rule {
-    api_groups = [""]
-    resources  = ["pods"]
-    verbs      = ["get", "list", "watch"]
-  }
-}
-
-resource "kubernetes_cluster_role_binding" "example" {
-  metadata {
-    name = "example-role-binding"
-  }
-
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = kubernetes_cluster_role.example.metadata[0].name
-  }
-
-  subject {
-    kind      = "ServiceAccount"
-    name      = "example-service-account"
-    namespace = "default"
-  }
-}
-
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
   enable_dns_support = true
@@ -66,7 +36,7 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
-  availability_zone       = "ap-northeast-1a"
+  availability_zone       = "ap-northeast-1c"
 
   tags = {
     Name = "private-subnet"
@@ -144,70 +114,6 @@ resource "aws_eks_cluster" "example" {
   ]
 }
 
-resource "aws_iam_role" "eks_cluster" {
-  name = "eks-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
-  role      = aws_iam_role.eks_cluster.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "eks_vpc_policy" {
-  role      = aws_iam_role.eks_cluster.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
-}
-
-resource "aws_iam_role" "eks_node" {
-  name = "eks-node-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "eks_node_policy" {
-  role      = aws_iam_role.eks_node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  role      = aws_iam_role.eks_node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_iam_role_policy_attachment" "s3_access_policy" {
-  role      = aws_iam_role.eks_node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-resource "aws_iam_role_policy_attachment" "cloudwatch_logs_policy" {
-  role      = aws_iam_role.eks_node.name
-  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-}
-
 resource "aws_eks_node_group" "public_nodes" {
   cluster_name    = aws_eks_cluster.example.name
   node_group_name = "public-node-group"
@@ -259,7 +165,7 @@ resource "aws_eks_node_group" "private_nodes" {
 }
 
 resource "aws_instance" "public_instance" {
-  ami           = "ami-0b44ce1dad7c202b7" 
+  ami           = "ami-0b44ce1dad7c202b7"
   instance_type = "t4g.nano"
   subnet_id     = aws_subnet.public.id
   associate_public_ip_address = true
@@ -270,7 +176,7 @@ resource "aws_instance" "public_instance" {
 }
 
 resource "aws_instance" "private_instance" {
-  ami           = "ami-0b44ce1dad7c202b7" 
+  ami           = "ami-0b44ce1dad7c202b7"
   instance_type = "t4g.nano"
   subnet_id     = aws_subnet.private.id
 
@@ -334,4 +240,34 @@ resource "aws_lb_target_group_attachment" "example_private" {
   target_group_arn = aws_lb_target_group.example.arn
   target_id        = aws_instance.private_instance.id
   port             = 80
+}
+
+resource "kubernetes_cluster_role" "example" {
+  metadata {
+    name = "example-role"
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["pods"]
+    verbs      = ["get", "list", "watch"]
+  }
+}
+
+resource "kubernetes_cluster_role_binding" "example" {
+  metadata {
+    name = "example-role-binding"
+  }
+
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = kubernetes_cluster_role.example.metadata[0].name
+  }
+
+  subject {
+    kind      = "ServiceAccount"
+    name      = "example-service-account"
+    namespace = "default"
+  }
 }
