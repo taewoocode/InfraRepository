@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cloudwatch-agent
+  namespace: amazon-cloudwatch
+spec:
+  selector:
+    matchLabels:
+      name: cloudwatch-agent
+  template:
+    metadata:
+      labels:
+        name: cloudwatch-agent
+    spec:
+      containers:
+      - name: cloudwatch-agent
+        image: amazon/cloudwatch-agent:latest
+        env:
+        - name: CW_CONFIG_CONTENT
+          valueFrom:
+            configMapKeyRef:
+              name: cwagentconfig
+              key: cwagentconfig.json
+        volumeMounts:
+        - name: cwagentconfig-volume
+          mountPath: /etc/cwagentconfig
+      volumes:
+      - name: cwagentconfig-volume
+        configMap:
+          name: cwagentconfig
